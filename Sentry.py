@@ -1,6 +1,8 @@
+import time
 import csv
 import os
 from datetime import datetime
+from FromCsvToListOfDictLoader import FromCsvToListOfDictLoader as CsvReader
 
 
 class Sentry:
@@ -36,13 +38,53 @@ class Sentry:
 			for row in data:
 				csv_writer.writerow(row)
 
+	def set_shedule(self, grafic_file_path):
+		self.shedule_dict = dict()
+		csv_reader = CsvReader()
+		data_from_csv = csv_reader.read(grafic_file_path)
+		for entity in data_from_csv:
+			if entity['is_enabled'] == '1':
+				min = entity['minute']
+				if not min in self.shedule_dict:
+					self.shedule_dict[min] = dict()
+				hour = entity['hour']
+				if not hour in self.shedule_dict[min]:
+					self.shedule_dict[min][hour] = dict()
+				dow = entity['day_of_week']
+				if not dow in self.shedule_dict[min][hour]:
+					self.shedule_dict[min][hour][dow] = dict()
+
+
+	def check_now(self):
+		min = str(datetime.now().minute)
+		hour = str(datetime.now().hour)
+		dow = str(datetime.now().weekday())
+		if min in self.shedule_dict:
+			if hour in self.shedule_dict[min]:
+				if dow in self.shedule_dict[min][hour]:
+					return True
+		return False
+
+	def run(self, func, interval_check):
+		while True:
+			print("\r%s Waiting..." % datetime.now(), end="")
+			if self.check_now():
+				print()
+				func()
+			time.sleep(interval_check * 60)
 
 if __name__ == '__main__':
 	sentry = Sentry()
 	cur_dir = os.path.abspath(os.curdir)
-	grafic_file_path = os.path.join(cur_dir, 'shedules', 'grafic_2.csv')
-	interval_min = 15
-	sentry.generate_shedule(grafic_file_path, interval_min)
+	grafic_file_path = os.path.join(cur_dir, 'shedules', 'grafic.csv')
 
-# now = datetime(2020,11,16)
-# print(now.weekday())
+
+	# interval_min = 15
+	# sentry.generate_shedule(grafic_file_path, interval_min)
+
+	def func():
+		print("%s test" % datetime.now())
+
+	sentry.set_shedule(grafic_file_path)
+	sentry.run(func, 1)
+
