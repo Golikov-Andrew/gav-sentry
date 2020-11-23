@@ -9,35 +9,6 @@ class Sentry:
 	def __init__(self):
 		pass
 
-	def generate_shedule(self, dest_file_path, interval_min):
-		header = ['is_enabled', 'minute', 'hour', 'day_of_week']
-		data = list()
-		data.append(header)
-
-		min = 0
-		hour = 0
-		dow = 0
-
-		while True:
-			data.append([1, min, hour, dow + 1])
-			min += interval_min
-			dif = 60 - min
-			if dif <= 0:
-				min = -dif
-				hour += 1
-				dif_h = 24 - hour
-				if dif_h <= 0:
-					hour = -dif_h
-					dow += 1
-					dif_dow = 7 - dow
-					if dif_dow <= 0:
-						break
-
-		with open(dest_file_path, 'w', encoding='utf-8') as f:
-			csv_writer = csv.writer(f, delimiter=';')
-			for row in data:
-				csv_writer.writerow(row)
-
 	def set_shedule(self, grafic_file_path):
 		self.shedule_dict = dict()
 		csv_reader = CsvReader()
@@ -53,7 +24,6 @@ class Sentry:
 				dow = entity['day_of_week']
 				if not dow in self.shedule_dict[min][hour]:
 					self.shedule_dict[min][hour][dow] = dict()
-
 
 	def check_now(self):
 		min = str(datetime.now().minute)
@@ -73,18 +43,43 @@ class Sentry:
 				func()
 			time.sleep(interval_check * 60)
 
+	def generate_shedule(self, grafic_file_path, interval_min, begin_date, end_date):
+		header = ['is_enabled', 'minute', 'hour', 'day_of_week']
+		data = list()
+		data.append(header)
+
+		delta_sec = interval_min * 60
+		begin_datetime = datetime.strptime(begin_date, '%Y-%m-%d %H:%M')
+		end_datetime = datetime.strptime(end_date, '%Y-%m-%d %H:%M')
+		begin_timestamp = begin_datetime.timestamp()
+		end_timestamp = end_datetime.timestamp()
+
+		cur_timestamp = begin_timestamp
+		while cur_timestamp < end_timestamp:
+			datetime_obj = datetime.fromtimestamp(cur_timestamp)
+			print(datetime_obj)
+			min = datetime_obj.minute
+			hour = datetime_obj.hour
+			dow = datetime_obj.weekday()
+			data.append([1, min, hour, dow + 1])
+			cur_timestamp += delta_sec
+
+		with open(grafic_file_path, 'w', encoding='utf-8') as f:
+			csv_writer = csv.writer(f, delimiter=';')
+			for row in data:
+				csv_writer.writerow(row)
+
+
 if __name__ == '__main__':
 	sentry = Sentry()
 	cur_dir = os.path.abspath(os.curdir)
-	grafic_file_path = os.path.join(cur_dir, 'shedules', 'grafic.csv')
+	grafic_file_path = os.path.join(cur_dir, 'shedules', 'grafic_2.csv')
 
-
-	# interval_min = 15
-	# sentry.generate_shedule(grafic_file_path, interval_min)
+	interval_min = 15
+	sentry.generate_shedule(grafic_file_path, interval_min, '2020-11-23 00:00', '2020-11-30 00:00')
 
 	def func():
 		print("%s test" % datetime.now())
 
 	sentry.set_shedule(grafic_file_path)
 	sentry.run(func, 1)
-
